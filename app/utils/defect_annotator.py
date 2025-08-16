@@ -141,9 +141,11 @@ class DefectAnnotator:
                       aligned_img: np.ndarray, metrics: Dict, 
                       result: Dict) -> np.ndarray:
         """Crea imagen anotada con cuadros rojos y explicaciones."""
-        
+        # Usar la imagen alineada como base si está disponible para mantener orientación consistente
+        base = aligned_img if aligned_img is not None else img
+
         # Convertir a PIL para mejor manejo de texto
-        img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        img_pil = Image.fromarray(cv2.cvtColor(base, cv2.COLOR_BGR2RGB))
         draw = ImageDraw.Draw(img_pil)
         
         # Intentar cargar fuente, usar por defecto si falla
@@ -155,7 +157,7 @@ class DefectAnnotator:
             font_small = ImageFont.load_default()
             
         # Encontrar regiones con defectos
-        defect_regions = self.find_defect_regions(img, master, aligned_img, metrics)
+        defect_regions = self.find_defect_regions(base, master, aligned_img if aligned_img is not None else base, metrics)
         
         # Dibujar cuadros rojos en las regiones problemáticas
         for region in defect_regions:

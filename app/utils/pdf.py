@@ -10,6 +10,9 @@ from reportlab.platypus.paragraph import Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import cv2
 import re
+import os
+import tempfile
+from PIL import Image, ImageOps
 
 def clean_html_for_pdf(html_text):
     """Limpia HTML complejo para compatibilidad con ReportLab."""
@@ -108,36 +111,56 @@ def draw_pdf(pdf_path, sku, lote_id, items):
         
         # Imágenes de comparación
         try:
-            # Crear tabla con imágenes lado a lado
-            img_data = []
-            img_row = []
-            
-            # Imagen alineada
-            if it.get("img_path"):
-                aligned_img = Image(it["img_path"], width=7*cm, height=7*cm)
-                img_row.append(aligned_img)
-            
-            # Overlay de diferencias
+            # Determinar qué imágenes mostrar
+            img_paths = []
+            img_labels = []
+            # Usar la imagen alineada; si no existe, usar la original
+            if it.get("aligned_path"):
+                img_paths.append(it["aligned_path"])
+                img_labels.append("Imagen Alineada")
+            elif it.get("img_path"):
+                img_paths.append(it["img_path"])
+                img_labels.append("Imagen Original")
             if it.get("overlay_path"):
-                overlay_img = Image(it["overlay_path"], width=7*cm, height=7*cm)
-                img_row.append(overlay_img)
-            
-            if img_row:
-                img_data.append(img_row)
-                
-                # Etiquetas para las imágenes
-                labels = ["Imagen Alineada", "Mapa de Diferencias"][:len(img_row)]
-                img_data.append(labels)
-                
-                img_table = Table(img_data, colWidths=[7.5*cm] * len(img_row))
+                img_paths.append(it["overlay_path"])
+                img_labels.append("Mapa de Diferencias")
+            if it.get("annotated_path"):
+                img_paths.append(it["annotated_path"])
+                img_labels.append("Defectos Anotados")
+
+            if img_paths:
+                # Normalizar orientación de imágenes para PDF (PIL respeta EXIF y elimina metadatos al re-guardar)
+                prepped_paths = []
+                for p in img_paths:
+                    try:
+                        with Image.open(p) as im:
+                            im = ImageOps.exif_transpose(im)
+                            im = im.convert('RGB')
+                            fd, tmp_path = tempfile.mkstemp(prefix='pdfimg_', suffix='.png')
+                            os.close(fd)
+                            im.save(tmp_path, format='PNG')
+                            prepped_paths.append(tmp_path)
+                    except Exception:
+                        prepped_paths.append(p)
+
+                # Calcular tamaño para que quepan hasta 3 imágenes por fila
+                cols = len(prepped_paths)
+                # margen entre columnas ~0.3cm
+                img_w = min(7*cm, (doc.width / cols) - 0.3*cm)
+                img_h = img_w  # cuadrado para simplicidad
+
+                img_row = [Image(p, width=img_w, height=img_h) for p in prepped_paths]
+
+                img_data = [img_row, img_labels[:cols]]
+                img_table = Table(img_data, colWidths=[img_w] * cols)
                 img_table.setStyle(TableStyle([
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                     ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
                     ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
                     ('FONTSIZE', (0, 1), (-1, 1), 10),
-                    ('TOPPADDING', (0, 1), (-1, 1), 10),
+                    ('TOPPADDING', (0, 1), (-1, 1), 6),
                 ]))
-                
+
                 story.append(img_table)
                 story.append(Spacer(1, 20))
         except Exception as e:
@@ -246,13 +269,43 @@ def draw_pdf(pdf_path, sku, lote_id, items):
                 story.append(Paragraph(f"• {info}", styles['Normal']))
             story.append(Spacer(1, 10))
         
-        # Explicación (convertir HTML a texto plano para ReportLab)
-        explanation = it.get("explanation", "")
-        if explanation:
-            story.append(Paragraph("<b>Evaluación:</b>", styles['Heading3']))
-            # Limpiar HTML complejo que ReportLab no puede manejar
-            clean_explanation = clean_html_for_pdf(explanation)
-            story.append(Paragraph(clean_explanation, styles['Normal']))
+        # Evaluación solo si la imagen fue RECHAZADA y en lenguaje sencillo
+        if it.get('status') != 'buena':
+            text_missing = it.get("text_missing") or []
+            codes_missing = it.get("codes_missing") or []
+            defects = it.get("defects") or []
+            failed_metrics = [m for m in it.get("metrics", []) if not m.get("passed")]
+
+            # Mapear métricas a causas simples
+            cause_map = {
+                "ssim_global": "La estructura de la imagen es diferente al master.",
+                "deltaE_avg": "El color promedio es diferente al esperado.",
+                "deltaE_max": "Hay zonas con color muy diferente al master.",
+                "deltaL": "La luminosidad es diferente (muy clara u oscura).",
+                "sharpness": "La imagen está borrosa o fuera de foco.",
+                "ocr_conf": "El texto no es legible o tiene baja calidad.",
+            }
+
+            reasons = []
+            # Resumir causas por métricas falladas (sin números)
+            added = set()
+            for fm in failed_metrics:
+                msg = cause_map.get(fm.get("name"))
+                if msg and fm.get("name") not in added:
+                    reasons.append(msg)
+                    added.add(fm.get("name"))
+
+            # Resumen de diferencias visibles
+            if defects:
+                reasons.append(f"Se detectaron diferencias visibles en {len(defects)} zona(s). Consulte la imagen de 'Defectos Anotados'.")
+            if text_missing:
+                reasons.append("Faltan textos: " + ", ".join(text_missing))
+            if codes_missing:
+                reasons.append("Faltan códigos: " + ", ".join(codes_missing))
+
+            if reasons:
+                story.append(Paragraph("<b>Evaluación:</b>", styles['Heading3']))
+                story.append(Paragraph(" ".join(reasons), styles['Normal']))
         
         story.append(Spacer(1, 30))
     

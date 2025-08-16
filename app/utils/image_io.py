@@ -17,10 +17,20 @@ def read_bgr_bytes(b: bytes):
     return arr
 
 def read_bgr(path: str | Path):
-    img = cv2.imread(str(path), cv2.IMREAD_COLOR)
-    if img is None:
-        raise ValueError(f"No se pudo leer {path}")
-    return img
+    """Lee imagen desde ruta -> BGR (corrigiendo rotación EXIF)."""
+    p = str(path)
+    try:
+        im = Image.open(p)
+        im = ImageOps.exif_transpose(im)  # respeta Orientation
+        im = im.convert("RGB")
+        arr = np.array(im)[:, :, ::-1]  # RGB -> BGR
+        return arr
+    except Exception:
+        # Fallback a OpenCV si PIL falla
+        img = cv2.imread(p, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError(f"No se pudo leer {path}")
+        return img
 
 def ensure_dir(p: str | Path):
     Path(p).mkdir(parents=True, exist_ok=True)

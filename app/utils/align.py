@@ -85,11 +85,18 @@ def _ecc_refine(aligned, master, iters=80):
         return aligned
 
 def align_to_master(img_bgr, master_bgr, try_rotations=(0,90,180,270)):
+    """Alinea probando 4 rotaciones y elige la de mayor SSIM.
+    Asume que la imagen de entrada ya fue corregida por EXIF antes de llegar aquí.
+    """
     best = None; bestH = None; bestScore = -1.0
+
+    rot_map = {0:None, 90:cv2.ROTATE_90_CLOCKWISE, 180:cv2.ROTATE_180, 270:cv2.ROTATE_90_COUNTERCLOCKWISE}
     for rot in try_rotations:
-        src = img_bgr if rot == 0 else cv2.rotate(
-            img_bgr, {90:cv2.ROTATE_90_CLOCKWISE,180:cv2.ROTATE_180,270:cv2.ROTATE_90_COUNTERCLOCKWISE}[rot]
-        )
+        if rot == 0:
+            src = img_bgr
+        else:
+            src = cv2.rotate(img_bgr, rot_map[rot])
+
         aligned, H = _homography_align(src, master_bgr)
         if aligned is None:
             continue
@@ -97,4 +104,5 @@ def align_to_master(img_bgr, master_bgr, try_rotations=(0,90,180,270)):
         score, _ = ssim_metrics(aligned, master_bgr)
         if score > bestScore:
             best, bestH, bestScore = aligned, H, score
+
     return best, bestH
