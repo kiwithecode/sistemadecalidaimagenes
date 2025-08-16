@@ -1,0 +1,54 @@
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.venv-wsl/
+venv/
+env/
+
+# OS / Editor settings
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Testing / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+
+# Local data/output (adjust as needed)
+# Temporary processing outputs
+/temp/
+
+# Generated reports (PDF/JSON)
+/reports/*.pdf
+/reports/*.json
+
+# Model artifacts (large files)
+/models/*.joblib
+
+# App runtime artifacts
+app/__pycache__/
+app/**/__pycache__/
+
+# Images produced during runs
+app/folder_path/buenas/
+app/folder_path/malas/
+app/reports/

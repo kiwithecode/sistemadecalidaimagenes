@@ -1,0 +1,18 @@
+{% extends "base.html" %} {% block content %}
+<h1>Nuevo lote</h1>
+<form id="cfg">
+  <label>SKU:</label>
+  <input id="sku" type="text" placeholder="OREO o auto" value="OREO" />
+  <button id="send" type="button" class="btn">Enviar</button>
+</form>
+
+<div id="drop" class="drop">
+  Arrastra imágenes aquí o haz clic para elegir
+  <input id="filepick" type="file" accept="image/*" multiple hidden />
+</div>
+
+<ul id="list" class="filelist"></ul>
+<div id="log" class="log"></div>
+
+<script src="/static/upload.js"></script>
+{% endblock %}

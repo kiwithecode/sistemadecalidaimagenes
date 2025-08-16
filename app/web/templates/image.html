@@ -1,0 +1,19 @@
+{% extends "base.html" %} {% block content %}
+<h1>{{ filename }} — {{ status|upper }}</h1>
+<p>
+  <a class="btn" href="/web/batch/{{ lote }}">← Volver</a>
+  <a class="btn" href="{{ pdf }}" target="_blank">Descargar PDF</a>
+</p>
+<div class="viewer">
+  <div class="canvas-wrap">
+    <img id="baseimg" src="{{ aligned }}" style="display: none" />
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
+<script src="/static/viewer.js"></script>
+<script>
+  const boxes = {{ boxes|tojson }};
+  const imgSrc = "{{ aligned }}";
+  window.addEventListener('load', () => { window.renderWithBoxes(imgSrc, boxes); });
+</script>
+{% endblock %}

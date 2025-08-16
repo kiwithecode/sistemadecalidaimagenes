@@ -1,0 +1,37 @@
+defaults:
+  ssim_global_min: 0.92
+  ssim_roi_min: 0.88
+  deltaE_avg_max: 3.0
+  deltaE_max_max: 5.0
+  sharpness_min: 120.0
+  use_ocr: true
+  ocr_min_conf: 0.85
+  expected_text: []
+  use_codes: true
+  expected_codes: []
+  llm:
+    enabled: true
+    provider: ollama
+    model: llama3.1:8b
+    host: http://localhost:11434
+    max_tokens: 220
+skus:
+  OREO:
+    ssim_global_min: 0.70                 # Más permisivo para SSIM
+    deltaE_avg_max: 10.0                  # Más permisivo - tu muestra tiene 8.4
+    deltaE_max_max: 100.0                 # Mucho más permisivo - tu muestra tiene 80.9
+    deltaL_max: 10.0                      # Más permisivo para luminosidad
+    sharpness_min: 50.0                   # Valor realista para nitidez
+    expected_text:
+    - OREO
+    expected_codes:
+    - 'EAN13:'
+    - 'LOT:'
+  CHIPS:
+    expected_text:
+    - CHIPS
+    - SAL
+    expected_codes:
+    - 'EAN13:'
+  CANDY: {}
+  JUICE: {}

@@ -1,0 +1,15 @@
+{% extends "base.html" %} {% block content %}
+<h1>Lote {{ lote }} — SKU {{ data.sku }}</h1>
+<p><a class="btn" href="{{ data.pdf }}" target="_blank">Descargar PDF</a></p>
+<div class="grid">
+  {% for t in thumbs %}
+  <a class="card {% if t.status!='buena' %}bad{% endif %}" href="{{ t.view }}">
+    <img src="{{ t.thumb }}" alt="{{ t.file }}" />
+    <div class="meta">
+      <div class="name">{{ t.file }}</div>
+      <div class="status">{{ t.status|upper }}</div>
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

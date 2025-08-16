@@ -1,0 +1,28 @@
+{% extends "base.html" %} {% block content %}
+<h1>Reportes recientes</h1>
+<p><a class="btn" href="/web/upload">+ Nuevo lote</a></p>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>Lote</th>
+      <th>SKU</th>
+      <th>Imágenes</th>
+      <th>Acciones</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for it in items %}
+    <tr>
+      <td>{{ it.lote }}</td>
+      <td>{{ it.sku }}</td>
+      <td>{{ it.num }}</td>
+      <td>
+        <a class="btn" href="/web/batch/{{ it.lote }}">Ver</a>
+        <a class="btn" href="{{ it.pdf }}" target="_blank">Descargar PDF</a>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
