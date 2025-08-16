@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Request, Query
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import json
@@ -25,10 +25,13 @@ def mount_static(app):
     app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 @router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
+async def index(request: Request, page: int = Query(1, ge=1), per_page: int = Query(10, ge=1, le=100)):
     items = []
     if REPORTS.exists():
-        for p in sorted(REPORTS.glob("*.json"), reverse=True):
+        files = list(REPORTS.glob("*.json"))
+        # ordenar por fecha de modificación (desc)
+        files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        for p in files:
             try:
                 js = json.loads(p.read_text(encoding="utf-8"))
                 items.append({
@@ -39,8 +42,15 @@ async def index(request: Request):
                 })
             except Exception:
                 pass
+
+    total = len(items)
+    start = (page - 1) * per_page
+    end = start + per_page
+    page_items = items[start:end]
+    total_pages = (total + per_page - 1) // per_page if per_page else 1
+
     tpl = env.get_template("index.html")
-    return tpl.render(items=items)
+    return tpl.render(items=page_items, page=page, per_page=per_page, total=total, total_pages=total_pages)
 
 @router.get("/batch/{lote}", response_class=HTMLResponse)
 async def batch_view(request: Request, lote: str):
@@ -86,3 +96,41 @@ async def image_view(request: Request, lote: str, filename: str):
 async def upload_view(request: Request):
     tpl = env.get_template("upload.html")
     return tpl.render()
+
+@router.post("/delete/{lote}")
+async def delete_lote(lote: str):
+    """Elimina un lote: JSON, PDF y carpeta temp."""
+    deleted = {"json": False, "pdf": False, "temp": False}
+    jpath = REPORTS / f"{lote}.json"
+    ppath = REPORTS / f"{lote}.pdf"
+    tdir = TEMP / lote
+    try:
+        if jpath.exists():
+            jpath.unlink()
+            deleted["json"] = True
+        if ppath.exists():
+            ppath.unlink()
+            deleted["pdf"] = True
+        if tdir.exists() and tdir.is_dir():
+            # borrar contenido
+            for child in tdir.iterdir():
+                try:
+                    if child.is_file():
+                        child.unlink()
+                    else:
+                        # borrar subdirectorios recursivamente
+                        import shutil
+                        shutil.rmtree(child, ignore_errors=True)
+                except Exception:
+                    pass
+            try:
+                tdir.rmdir()
+                deleted["temp"] = True
+            except Exception:
+                # si no está vacío por algún motivo, intentar forzar
+                import shutil
+                shutil.rmtree(tdir, ignore_errors=True)
+                deleted["temp"] = True
+        return JSONResponse({"ok": True, "deleted": deleted})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e), "deleted": deleted})

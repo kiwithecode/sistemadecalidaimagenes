@@ -20,9 +20,37 @@
       <td>
         <a class="btn" href="/web/batch/{{ it.lote }}">Ver</a>
         <a class="btn" href="{{ it.pdf }}" target="_blank">Descargar PDF</a>
+        <button class="btn btn-danger" onclick="deleteLote('{{ it.lote }}')">Borrar</button>
       </td>
     </tr>
     {% endfor %}
   </tbody>
-</table>
+  </table>
+
+  <div style="display:flex; gap:8px; align-items:center;">
+    {% if page > 1 %}
+      <a class="btn" href="/web/?page={{ page - 1 }}&per_page={{ per_page }}">« Anterior</a>
+    {% endif %}
+    <span>Página {{ page }} de {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a class="btn" href="/web/?page={{ page + 1 }}&per_page={{ per_page }}">Siguiente »</a>
+    {% endif %}
+  </div>
+
+<script>
+async function deleteLote(lote){
+  if(!confirm('¿Borrar lote ' + lote + ' y sus archivos?')) return;
+  try{
+    const res = await fetch('/web/delete/' + lote, {method:'POST'});
+    const data = await res.json();
+    if(data.ok){
+      location.reload();
+    }else{
+      alert('Error al borrar: ' + (data.error || 'desconocido'));
+    }
+  }catch(e){
+    alert('Error de red al borrar');
+  }
+}
+</script>
 {% endblock %}
